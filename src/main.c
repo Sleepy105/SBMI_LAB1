@@ -19,15 +19,20 @@
 #define YEW PB1
 #define REW PB0
 
-#define RED_DELAY 5000
-#define YELLOW_DELAY 5000
-#define GREEN_DELAY 50000
+#define RED_DELAY 500
+#define YELLOW_DELAY 500
+#define GREEN_DELAY 5000
 #define BREAKDOWN_DELAY 1000
+#define STOPPED_DELAY 10000
 
-uint8_t Breakdown = FALSE;
+#define BREAKDOWN_ENTRY_STATE 6
+
+uint8_t stateBeforeEm = 0;
+uint8_t Emergency = FALSE;
+
 uint8_t stateRegular = 0;
-uint8_t stateBreakdown = 0;
-int elapsedMillis = 0;
+uint8_t stateEmergency = 0;
+int elapsedMillis = 0;      // Count elapsed milliseconds from last state change
 
 
 int main() {
@@ -53,43 +58,144 @@ int main() {
             elapsedMillis += 1000;
         }
         
-
-        if (Breakdown == TRUE) {
-            // STATE MACHINE - BREAKDOWN
-            if (stateBreakdown == 0 && elapsedMillis >= BREAKDOWN_DELAY) {
-                stateBreakdown = 1;
-                elapsedMillis = 0;
-            } else if (stateBreakdown == 1 && elapsedMillis >= BREAKDOWN_DELAY) {
-                stateBreakdown = 0;
-                elapsedMillis = 0;
+        if (TRUE == Emergency) {
+            // STATE MACHINE - EMERGENCY
+            switch(stateEmergency) {
+                case 0:
+                    if (1 == stateBeforeEm || 2 == stateBeforeEm) {
+                        stateEmergency = 1;
+                    }
+                    else if (4 == stateBeforeEm || 5 == stateBeforeEm) {
+                        stateEmergency = 2;
+                    }
+                    else {
+                        stateEmergency = 3;
+                    }
+                    /*
+                     The 'elapsedMillis' variable does not get reset so that if the emergency state
+                     starts when one of the directions is showing a yellow light, that same yellow
+                     light only stays on for the rest of the standard period.
+                     Otherwise, the Yellow light might stay on for more that 'YELLOW_DELAY'.
+                    */
+                    break;
+                case 1:
+                    if (YELLOW_DELAY <= elapsedMillis) {
+                        stateEmergency = 3;
+                        elapsedMillis = 0;
+                    }
+                    break;
+                case 2:
+                    if (YELLOW_DELAY <= elapsedMillis) {
+                        stateEmergency = 3;
+                        elapsedMillis = 0;
+                    }
+                    break;
+                case 3:
+                    if (STOPPED_DELAY <= elapsedMillis) {
+                        Emergency = FALSE;
+                        elapsedMillis = 0;
+                    }
+                    break;
+                default:
+                    Emergency = FALSE;
+                    stateEmergency = BREAKDOWN_ENTRY_STATE;
+                    break;
             }
         }
         else {
             // STATE MACHINE - REGULAR
-            if (stateRegular == 0 && elapsedMillis >= RED_DELAY) {
-                stateRegular = 1;
-                elapsedMillis = 0; // Reset counter
-            } else if (stateRegular == 1 && elapsedMillis >= GREEN_DELAY) {
-                stateRegular = 2;
-                elapsedMillis = 0;
-            } else if (stateRegular == 2 && elapsedMillis >= YELLOW_DELAY) {
-                stateRegular = 3;
-                elapsedMillis = 0;
-            } else if (stateRegular == 3 && elapsedMillis >= RED_DELAY) {
-                stateRegular = 4;
-                elapsedMillis = 0;
-            } else if (stateRegular == 4 && elapsedMillis >= GREEN_DELAY) {
-                stateRegular = 5;
-                elapsedMillis = 0;
-            } else if (stateRegular == 5 && elapsedMillis >= YELLOW_DELAY) {
-                stateRegular = 0;
-                elapsedMillis = 0;
+            switch(stateRegular) {
+                case 0:
+                    if (RED_DELAY <= elapsedMillis) {
+                        stateRegular = 1;
+                        elapsedMillis = 0; // Reset counter
+                    }
+                    break;
+                case 1:
+                    if (GREEN_DELAY <= elapsedMillis) {
+                        stateRegular = 2;
+                        elapsedMillis = 0; // Reset counter
+                    }
+                    break;
+                case 2:
+                    if (YELLOW_DELAY <= elapsedMillis) {
+                        stateRegular = 3;
+                        elapsedMillis = 0; // Reset counter
+                    }
+                    break;
+                case 3:
+                    if (RED_DELAY <= elapsedMillis) {
+                        stateRegular = 4;
+                        elapsedMillis = 0; // Reset counter
+                    }
+                    break;
+                case 4:
+                    if (GREEN_DELAY <= elapsedMillis) {
+                        stateRegular = 5;
+                        elapsedMillis = 0; // Reset counter
+                    }
+                    break;
+                case 5:
+                    if (YELLOW_DELAY <= elapsedMillis) {
+                        stateRegular = 0;
+                        elapsedMillis = 0; // Reset counter
+                    }
+                    break;
+                case 6: // BREAKDOWN STATE
+                    if (BREAKDOWN_DELAY <= elapsedMillis) {
+                        stateRegular = 7;
+                        elapsedMillis = 0; // Reset counter
+                    }
+                    break;
+                case 7: // BREAKDOWN STATE
+                    if (BREAKDOWN_DELAY <= elapsedMillis) {
+                        stateRegular = 6;
+                        elapsedMillis = 0; // Reset counter
+                    }
+                    break;
+                default:
+                    stateRegular = BREAKDOWN_ENTRY_STATE;
+                    break;
             }
         }
 
 
         // Change Output Pin Values
-        if (Breakdown == FALSE) {
+        if (TRUE == Emergency) {
+            switch(stateEmergency) {
+                case 0:
+                    break;
+                case 1:
+                    PORTB &= ~(1 << RNS);
+                    PORTB |= (1 << YNS);
+                    PORTB &= ~(1 << GNS);
+                    PORTB |= (1 << REW);
+                    PORTB &= ~(1 << YEW);
+                    PORTB &= ~(1 << GEW);
+                    break;
+                case 2:
+                    PORTB |= (1 << RNS);
+                    PORTB &= ~(1 << YNS);
+                    PORTB &= ~(1 << GNS);
+                    PORTB &= ~(1 << REW);
+                    PORTB |= (1 << YEW);
+                    PORTB &= ~(1 << GEW);
+                    break;
+                case 3:
+                    PORTB |= (1 << RNS);
+                    PORTB &= ~(1 << YNS);
+                    PORTB &= ~(1 << GNS);
+                    PORTB |= (1 << REW);
+                    PORTB &= ~(1 << YEW);
+                    PORTB &= ~(1 << GEW);
+                    break;
+                default:
+                    Emergency = FALSE;
+                    stateRegular = BREAKDOWN_ENTRY_STATE;
+                    break;
+            }
+        }
+        else {
             switch (stateRegular) {
                 case 0:
                     PORTB |= (1 << RNS);  // RNS ON
@@ -139,31 +245,24 @@ int main() {
                     PORTB |= (1 << YEW);
                     PORTB &= ~(1 << GEW);
                     break;
-                default:
-                    stateRegular = 0;
-                    break;
-            }
-        }
-        else {
-            switch(stateBreakdown) {
-                case 0:
-                    PORTB &= ~(1 << RNS);  // RNS ON
+                case 6:
+                    PORTB &= ~(1 << RNS);
                     PORTB |= (1 << YNS);
-                    PORTB &= ~(1 << GNS); // GNS off
-                    PORTB &= ~(1 << REW);
-                    PORTB |= (1 << YEW);
-                    PORTB &= ~(1 << GEW);
-                    break;
-                case 1:
-                    PORTB &= ~(1 << RNS);  // RNS ON
-                    PORTB &= ~(1 << YNS);
-                    PORTB &= ~(1 << GNS); // GNS off
+                    PORTB &= ~(1 << GNS);
                     PORTB &= ~(1 << REW);
                     PORTB &= ~(1 << YEW);
                     PORTB &= ~(1 << GEW);
                     break;
+                case 7:
+                    PORTB &= ~(1 << RNS);
+                    PORTB &= ~(1 << YNS);
+                    PORTB &= ~(1 << GNS);
+                    PORTB &= ~(1 << REW);
+                    PORTB |= (1 << YEW);
+                    PORTB &= ~(1 << GEW);
+                    break;
                 default:
-                    stateBreakdown = 0;
+                    stateRegular = BREAKDOWN_ENTRY_STATE;
                     break;
             }
         }
