@@ -19,11 +19,13 @@
 #define YEW PB1
 #define REW PB0
 
+#define EMG_BUTTON PD2
+
 #define RED_DELAY 500
 #define YELLOW_DELAY 500
-#define GREEN_DELAY 5000
+#define GREEN_DELAY 1000
 #define BREAKDOWN_DELAY 1000
-#define STOPPED_DELAY 10000
+#define STOPPED_DELAY 3000
 
 #define BREAKDOWN_ENTRY_STATE 6
 
@@ -34,6 +36,17 @@ uint8_t stateRegular = 0;
 uint8_t stateEmergency = 0;
 int elapsedMillis = 0;      // Count elapsed milliseconds from last state change
 
+ISR(INT0_vect) {
+    Emergency = TRUE;
+    stateEmergency = 0;
+    stateBeforeEm = stateRegular;
+    if (1 == stateRegular || 2 == stateRegular) {
+        stateRegular = 3;
+    }
+    else if (4 == stateRegular || 5 == stateRegular) {
+        stateRegular = 0;
+    }
+}
 
 int main() {
     // Set up timer
@@ -46,16 +59,25 @@ int main() {
     DDRB |= (1 << REW); // EW red
     DDRB |= (1 << YEW); // EW yellow
     DDRB |= (1 << GEW); // EW green
+
+    DDRD &= ~(1 << EMG_BUTTON); // Set as Input
+    PORTD |= (1 << EMG_BUTTON); // Activate the internal Pull-up
+
+    // EMG button interrupt setup
+    EICRA |= (0x02);   // INT0 Interrupt at Low Level
+    EIMSK |= (1 << INT0);
+
+    sei();
     
     mili_timer T1;
     init_mili_timers();
-    start_timer(&T1, 1000);   // Start a timer to count 1000 miliseconds
+    start_timer(&T1, 500);   // Start a timer to count 1000 miliseconds
 
     while (1) {
 
         if (get_timer(&T1)) {
-            start_timer(&T1, 1000); // Restart the timer
-            elapsedMillis += 1000;
+            start_timer(&T1, 500); // Restart the timer
+            elapsedMillis += 500;
         }
         
         if (TRUE == Emergency) {
@@ -71,12 +93,7 @@ int main() {
                     else {
                         stateEmergency = 3;
                     }
-                    /*
-                     The 'elapsedMillis' variable does not get reset so that if the emergency state
-                     starts when one of the directions is showing a yellow light, that same yellow
-                     light only stays on for the rest of the standard period.
-                     Otherwise, the Yellow light might stay on for more that 'YELLOW_DELAY'.
-                    */
+                    elapsedMillis = 0;
                     break;
                 case 1:
                     if (YELLOW_DELAY <= elapsedMillis) {
