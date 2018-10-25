@@ -42,6 +42,20 @@ ISR(INT0_vect) {
     stateBeforeEm = stateRegular;
 }
 
+ISR(TIMER1_COMPA_vect) {
+    elapsedMillis += 10;
+}
+
+void tc1_init(){
+    TCCR1B = 0;             // STOP the timer
+    TIFR1 = (7<<TOV1) | (1<<ICF1);     // Clear flag register
+    TCCR1A = 0;             // Set mode to CTC
+    TCCR1B = (1<<WGM12);
+    OCR1A = 625;            // OCR2A
+    TIMSK1 = (1<<OCIE1A);   // Enable interrupt on compare with OCR2A
+    TCCR1B |= 4;             // Set the TP to 256
+}
+
 int main() {
     // Set up timer
     TCCR1B |= (1 << CS10);
@@ -61,6 +75,9 @@ int main() {
     EICRA |= (0x02);   // INT0 Interrupt at FE
     EIMSK |= (1 << INT0);
 
+    // INIT Timers
+    tc1_init();
+
     sei();
     
     mili_timer T1;
@@ -68,12 +85,6 @@ int main() {
     start_timer(&T1, 500);   // Start a timer to count 1000 miliseconds
 
     while (1) {
-
-        if (get_timer(&T1)) {
-            start_timer(&T1, 500); // Restart the timer
-            //_delay_ms(10);
-            elapsedMillis += 500;
-        }
         
         if (TRUE == Emergency) {
             // STATE MACHINE - EMERGENCY
