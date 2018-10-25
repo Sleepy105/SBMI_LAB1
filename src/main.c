@@ -40,12 +40,6 @@ ISR(INT0_vect) {
     Emergency = TRUE;
     stateEmergency = 0;
     stateBeforeEm = stateRegular;
-    if (1 == stateRegular || 2 == stateRegular) {
-        stateRegular = 3;
-    }
-    else if (4 == stateRegular || 5 == stateRegular) {
-        stateRegular = 0;
-    }
 }
 
 int main() {
@@ -64,7 +58,7 @@ int main() {
     PORTD |= (1 << EMG_BUTTON); // Activate the internal Pull-up
 
     // EMG button interrupt setup
-    EICRA |= (0x02);   // INT0 Interrupt at Low Level
+    EICRA |= (0x02);   // INT0 Interrupt at FE
     EIMSK |= (1 << INT0);
 
     sei();
@@ -77,6 +71,7 @@ int main() {
 
         if (get_timer(&T1)) {
             start_timer(&T1, 500); // Restart the timer
+            //_delay_ms(10);
             elapsedMillis += 500;
         }
         
@@ -86,9 +81,11 @@ int main() {
                 case 0:
                     if (1 == stateBeforeEm || 2 == stateBeforeEm) {
                         stateEmergency = 1;
+                        stateRegular = 3;
                     }
                     else if (4 == stateBeforeEm || 5 == stateBeforeEm) {
                         stateEmergency = 2;
+                        stateRegular = 0;
                     }
                     else {
                         stateEmergency = 3;
