@@ -7,7 +7,6 @@
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
-#include <timer_tools.h>
 
 #define TRUE 1
 #define FALSE 0
@@ -32,7 +31,7 @@
 uint8_t stateBeforeEm = 0;
 uint8_t Emergency = FALSE;
 
-uint8_t stateRegular = 0;
+uint8_t stateRegular = 66;
 uint8_t stateEmergency = 0;
 int elapsedMillis = 0;      // Count elapsed milliseconds from last state change
 
@@ -47,18 +46,16 @@ ISR(TIMER1_COMPA_vect) {
 }
 
 void tc1_init(){
-    TCCR1B = 0;             // STOP the timer
-    TIFR1 = (7<<TOV1) | (1<<ICF1);     // Clear flag register
-    TCCR1A = 0;             // Set mode to CTC
-    TCCR1B = (1<<WGM12);
-    OCR1A = 625;            // OCR2A
-    TIMSK1 = (1<<OCIE1A);   // Enable interrupt on compare with OCR2A
-    TCCR1B |= 4;             // Set the TP to 256
+    TCCR1B = 0;                         // STOP the timer
+    TIFR1 = (7<<TOV1) | (1<<ICF1);      // Clear flag register
+    TCCR1A = 0;                         // Set mode...
+    TCCR1B = (1<<WGM12);                // ...to CTC
+    OCR1A = 625;                        // OCR1A
+    TIMSK1 = (1<<OCIE1A);               // Enable interrupt on compare with OCR1A
+    TCCR1B |= 4;                        // Set the TP to 256
 }
 
 int main() {
-    // Set up timer
-    TCCR1B |= (1 << CS10);
 
     // Semaphores
     DDRB |= (1 << RNS); // NS red
@@ -72,7 +69,7 @@ int main() {
     PORTD |= (1 << EMG_BUTTON); // Activate the internal Pull-up
 
     // EMG button interrupt setup
-    EICRA |= (0x02);   // INT0 Interrupt at FE
+    EICRA |= (0x02);        // INT0 Interrupt at FE
     EIMSK |= (1 << INT0);
 
     // INIT Timers
@@ -80,10 +77,7 @@ int main() {
 
     sei();
     
-    mili_timer T1;
-    init_mili_timers();
-    start_timer(&T1, 500);   // Start a timer to count 1000 miliseconds
-
+    
     while (1) {
         
         if (TRUE == Emergency) {
@@ -123,7 +117,7 @@ int main() {
                     break;
                 default:
                     Emergency = FALSE;
-                    stateEmergency = BREAKDOWN_ENTRY_STATE;
+                    stateRegular = BREAKDOWN_ENTRY_STATE;
                     break;
             }
         }
