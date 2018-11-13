@@ -102,18 +102,24 @@ int main() {
                         stateEmergency = 3;
                         elapsedMillis = 0;
                     }
+
+                    PORTB = (1 << YNS) & (1 << REW);
                     break;
                 case 2:
                     if (YELLOW_DELAY <= elapsedMillis) {
                         stateEmergency = 3;
                         elapsedMillis = 0;
                     }
+
+                    PORTB = (1 << RNS) & (1 << YEW);
                     break;
                 case 3:
                     if (STOPPED_DELAY <= elapsedMillis) {
                         Emergency = FALSE;
                         elapsedMillis = 0;
                     }
+
+                    PORTB = (1 << RNS) & (1 << REW);
                     break;
                 default:
                     Emergency = FALSE;
@@ -129,100 +135,63 @@ int main() {
                         stateRegular = 1;
                         elapsedMillis = 0; // Reset counter
                     }
+
+                    PORTB = (1 << RNS) & (1 << REW);
                     break;
                 case 1:
                     if (GREEN_DELAY <= elapsedMillis) {
                         stateRegular = 2;
                         elapsedMillis = 0; // Reset counter
                     }
+
+                    PORTB = (1 << GNS) & (1 << REW);
                     break;
                 case 2:
                     if (YELLOW_DELAY <= elapsedMillis) {
                         stateRegular = 3;
                         elapsedMillis = 0; // Reset counter
                     }
+
+                    PORTB = (1 << YNS) & (1 << REW);
                     break;
                 case 3:
                     if (RED_DELAY <= elapsedMillis) {
                         stateRegular = 4;
                         elapsedMillis = 0; // Reset counter
                     }
+
+                    PORTB = (1 << RNS) & (1 << REW);
                     break;
                 case 4:
                     if (GREEN_DELAY <= elapsedMillis) {
                         stateRegular = 5;
                         elapsedMillis = 0; // Reset counter
                     }
+
+                    PORTB = (1 << RNS) & (1 << GEW);
                     break;
                 case 5:
                     if (YELLOW_DELAY <= elapsedMillis) {
                         stateRegular = 0;
                         elapsedMillis = 0; // Reset counter
                     }
+
+                    PORTB = (1 << RNS) & (1 << YEW);
                     break;
                 case 6: // BREAKDOWN STATE
                     if (BREAKDOWN_DELAY <= elapsedMillis) {
                         stateRegular = 7;
                         elapsedMillis = 0; // Reset counter
                     }
+
+                    PORTB = (1 << YNS);
                     break;
                 case 7: // BREAKDOWN STATE
                     if (BREAKDOWN_DELAY <= elapsedMillis) {
                         stateRegular = 6;
                         elapsedMillis = 0; // Reset counter
                     }
-                    break;
-                default:
-                    stateRegular = BREAKDOWN_ENTRY_STATE;
-                    break;
-            }
-        }
 
-
-        // Change Output Pin Values
-        if (TRUE == Emergency) {
-            switch(stateEmergency) {
-                case 0:
-                    break;
-                case 1:
-                    PORTB = (1 << YNS) & (1 << REW);
-                    break;
-                case 2:
-                    PORTB = (1 << RNS) & (1 << YEW);
-                    break;
-                case 3:
-                    PORTB = (1 << RNS) & (1 << REW);
-                    break;
-                default:
-                    Emergency = FALSE;
-                    stateRegular = BREAKDOWN_ENTRY_STATE;
-                    break;
-            }
-        }
-        else {
-            switch (stateRegular) {
-                case 0:
-                    PORTB = (1 << RNS) & (1 << REW);
-                    break;
-                case 1:
-                    PORTB = (1 << GNS) & (1 << REW);
-                    break;
-                case 2:
-                    PORTB = (1 << YNS) & (1 << REW);
-                    break;
-                case 3:
-                    PORTB = (1 << RNS) & (1 << REW);
-                    break;
-                case 4:
-                    PORTB = (1 << RNS) & (1 << GEW);
-                    break;
-                case 5:
-                    PORTB = (1 << RNS) & (1 << YEW);
-                    break;
-                case 6:
-                    PORTB = (1 << YNS);
-                    break;
-                case 7:
                     PORTB = (1 << YEW);
                     break;
                 default:
