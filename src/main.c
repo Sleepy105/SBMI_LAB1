@@ -185,28 +185,13 @@ int main() {
                 case 0:
                     break;
                 case 1:
-                    PORTB &= ~(1 << RNS);
-                    PORTB |= (1 << YNS);
-                    PORTB &= ~(1 << GNS);
-                    PORTB |= (1 << REW);
-                    PORTB &= ~(1 << YEW);
-                    PORTB &= ~(1 << GEW);
+                    PORTB = (1 << YNS) & (1 << REW);
                     break;
                 case 2:
-                    PORTB |= (1 << RNS);
-                    PORTB &= ~(1 << YNS);
-                    PORTB &= ~(1 << GNS);
-                    PORTB &= ~(1 << REW);
-                    PORTB |= (1 << YEW);
-                    PORTB &= ~(1 << GEW);
+                    PORTB = (1 << RNS) & (1 << YEW);
                     break;
                 case 3:
-                    PORTB |= (1 << RNS);
-                    PORTB &= ~(1 << YNS);
-                    PORTB &= ~(1 << GNS);
-                    PORTB |= (1 << REW);
-                    PORTB &= ~(1 << YEW);
-                    PORTB &= ~(1 << GEW);
+                    PORTB = (1 << RNS) & (1 << REW);
                     break;
                 default:
                     Emergency = FALSE;
@@ -217,68 +202,28 @@ int main() {
         else {
             switch (stateRegular) {
                 case 0:
-                    PORTB |= (1 << RNS);  // RNS ON
-                    PORTB &= ~(1 << YNS);
-                    PORTB &= ~(1 << GNS); // GNS off
-                    PORTB |= (1 << REW);
-                    PORTB &= ~(1 << YEW);
-                    PORTB &= ~(1 << GEW);
+                    PORTB = (1 << RNS) & (1 << REW);
                     break;
                 case 1:
-                    PORTB &= ~(1 << RNS);
-                    PORTB &= ~(1 << YNS);
-                    PORTB |= (1 << GNS);
-                    PORTB |= (1 << REW);
-                    PORTB &= ~(1 << YEW);
-                    PORTB &= ~(1 << GEW);
+                    PORTB = (1 << GNS) & (1 << REW);
                     break;
                 case 2:
-                    PORTB &= ~(1 << RNS);
-                    PORTB |= (1 << YNS);
-                    PORTB &= ~(1 << GEW);
-                    PORTB |= (1 << REW);
-                    PORTB &= ~(1 << YEW);
-                    PORTB &= ~(1 << GNS);
+                    PORTB = (1 << YNS) & (1 << REW);
                     break;
                 case 3:
-                    PORTB |= (1 << RNS);
-                    PORTB &= ~(1 << YNS);
-                    PORTB &= ~(1 << GNS);
-                    PORTB |= (1 << REW);
-                    PORTB &= ~(1 << YEW);
-                    PORTB &= ~(1 << GEW);
+                    PORTB = (1 << RNS) & (1 << REW);
                     break;
                 case 4:
-                    PORTB |= (1 << RNS);
-                    PORTB &= ~(1 << YNS);
-                    PORTB &= ~(1 << GNS);
-                    PORTB &= ~(1 << REW);
-                    PORTB &= ~(1 << YEW);
-                    PORTB |= (1 << GEW);
+                    PORTB = (1 << RNS) & (1 << GEW);
                     break;
                 case 5:
-                    PORTB |= (1 << RNS);
-                    PORTB &= ~(1 << YNS);
-                    PORTB &= ~(1 << GNS);
-                    PORTB &= ~(1 << REW);
-                    PORTB |= (1 << YEW);
-                    PORTB &= ~(1 << GEW);
+                    PORTB = (1 << RNS) & (1 << YEW);
                     break;
                 case 6:
-                    PORTB &= ~(1 << RNS);
-                    PORTB |= (1 << YNS);
-                    PORTB &= ~(1 << GNS);
-                    PORTB &= ~(1 << REW);
-                    PORTB &= ~(1 << YEW);
-                    PORTB &= ~(1 << GEW);
+                    PORTB = (1 << YNS);
                     break;
                 case 7:
-                    PORTB &= ~(1 << RNS);
-                    PORTB &= ~(1 << YNS);
-                    PORTB &= ~(1 << GNS);
-                    PORTB &= ~(1 << REW);
-                    PORTB |= (1 << YEW);
-                    PORTB &= ~(1 << GEW);
+                    PORTB = (1 << YEW);
                     break;
                 default:
                     stateRegular = BREAKDOWN_ENTRY_STATE;
