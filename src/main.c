@@ -27,18 +27,16 @@
 #define STOPPED_DELAY 3000
 
 #define BREAKDOWN_ENTRY_STATE 6
+#define EMERGENCY_ENTRY_STATE 8
 
 uint8_t stateBeforeEm = 0;
-uint8_t Emergency = FALSE;
 
-uint8_t stateRegular = 66;
-uint8_t stateEmergency = 0;
-int elapsedMillis = 0;      // Count elapsed milliseconds from last state change
+uint8_t stateRegular = 0;
+volatile int elapsedMillis = 0;         // Count elapsed milliseconds from last state change
 
-ISR(INT0_vect) {
-    Emergency = TRUE;
-    stateEmergency = 0;
+ISR(INT0_vect) {                        // Enter 'Emergency' mode on button press
     stateBeforeEm = stateRegular;
+    stateRegular = EMERGENCY_ENTRY_STATE;
 }
 
 ISR(TIMER1_COMPA_vect) {
@@ -57,22 +55,22 @@ void tc1_init(){
 
 int main() {
 
-    // Semaphores
-    DDRB |= (1 << RNS); // NS red
-    DDRB |= (1 << YNS); // NS yellow
-    DDRB |= (1 << GNS); // NS green
-    DDRB |= (1 << REW); // EW red
-    DDRB |= (1 << YEW); // EW yellow
-    DDRB |= (1 << GEW); // EW green
+    /* Semaphores */
+    DDRB |= (1 << RNS);                 // NS red
+    DDRB |= (1 << YNS);                 // NS yellow
+    DDRB |= (1 << GNS);                 // NS green
+    DDRB |= (1 << REW);                 // EW red
+    DDRB |= (1 << YEW);                 // EW yellow
+    DDRB |= (1 << GEW);                 // EW green
 
-    DDRD &= ~(1 << EMG_BUTTON); // Set as Input
-    PORTD |= (1 << EMG_BUTTON); // Activate the internal Pull-up
+    DDRD &= ~(1 << EMG_BUTTON);         // Set as Input
+    PORTD |= (1 << EMG_BUTTON);         // Activate the internal Pull-up
 
-    // EMG button interrupt setup
-    EICRA |= (0x02);        // INT0 Interrupt at FE
+    /* EMG button interrupt setup */
+    EICRA |= (0x02);                    // INT0 Interrupt at FE
     EIMSK |= (1 << INT0);
 
-    // INIT Timers
+    /* INIT Timers */
     tc1_init();
 
     sei();
@@ -80,124 +78,119 @@ int main() {
     
     while (1) {
         
-        if (TRUE == Emergency) {
-            // STATE MACHINE - EMERGENCY
-            switch(stateEmergency) {
-                case 0:
+        switch(stateRegular) {
+            case 0:
+                if (RED_DELAY <= elapsedMillis) {
+                    stateRegular = 1;
+                    elapsedMillis = 0;  // Reset counter
+                }
+
+                PORTB = (1 << RNS) & (1 << REW);
+                break;
+            case 1:
+                if (GREEN_DELAY <= elapsedMillis) {
+                    stateRegular = 2;
+                    elapsedMillis = 0;  // Reset counter
+                }
+
+                PORTB = (1 << GNS) & (1 << REW);
+                break;
+            case 2:
+                if (YELLOW_DELAY <= elapsedMillis) {
+                    stateRegular = 3;
+                    elapsedMillis = 0;  // Reset counter
+                }
+
+                PORTB = (1 << YNS) & (1 << REW);
+                break;
+            case 3:
+                if (RED_DELAY <= elapsedMillis) {
+                    stateRegular = 4;
+                    elapsedMillis = 0;  // Reset counter
+                }
+
+                PORTB = (1 << RNS) & (1 << REW);
+                break;
+            case 4:
+                if (GREEN_DELAY <= elapsedMillis) {
+                    stateRegular = 5;
+                    elapsedMillis = 0;  // Reset counter
+                }
+
+                PORTB = (1 << RNS) & (1 << GEW);
+                break;
+            case 5:
+                if (YELLOW_DELAY <= elapsedMillis) {
+                    stateRegular = 0;
+                    elapsedMillis = 0;  // Reset counter
+                }
+
+                PORTB = (1 << RNS) & (1 << YEW);
+                break;
+            
+            /* BREAKDOWN STATES */
+            case 6:
+                if (BREAKDOWN_DELAY <= elapsedMillis) {
+                    stateRegular = 7;
+                    elapsedMillis = 0;  // Reset counter
+                }
+
+                PORTB = (1 << YNS);
+                break;
+            case 7:
+                if (BREAKDOWN_DELAY <= elapsedMillis) {
+                    stateRegular = 6;
+                    elapsedMillis = 0;  // Reset counter
+                }
+
+                PORTB = (1 << YEW);
+                break;
+            
+            /* EMERGENCY STATES */
+            case 8:
+                if (1 == stateBeforeEm || 2 == stateBeforeEm) {
+                    stateRegular = 9;
+                }
+                else if (4 == stateBeforeEm || 5 == stateBeforeEm) {
+                    stateRegular = 10;
+                }
+                else {
+                    stateRegular = 11;
+                }
+                elapsedMillis = 0;
+                break;
+            case 9:
+                if (YELLOW_DELAY <= elapsedMillis) {
+                    stateRegular = 11;
+                    elapsedMillis = 0;
+                }
+
+                PORTB = (1 << YNS) & (1 << REW);
+                break;
+            case 10:
+                if (YELLOW_DELAY <= elapsedMillis) {
+                    stateRegular = 11;
+                    elapsedMillis = 0;
+                }
+
+                PORTB = (1 << RNS) & (1 << YEW);
+                break;
+            case 11:
+                if (STOPPED_DELAY <= elapsedMillis) {
                     if (1 == stateBeforeEm || 2 == stateBeforeEm) {
-                        stateEmergency = 1;
                         stateRegular = 3;
                     }
                     else if (4 == stateBeforeEm || 5 == stateBeforeEm) {
-                        stateEmergency = 2;
                         stateRegular = 0;
-                    }
-                    else {
-                        stateEmergency = 3;
                     }
                     elapsedMillis = 0;
-                    break;
-                case 1:
-                    if (YELLOW_DELAY <= elapsedMillis) {
-                        stateEmergency = 3;
-                        elapsedMillis = 0;
-                    }
+                }
 
-                    PORTB = (1 << YNS) & (1 << REW);
-                    break;
-                case 2:
-                    if (YELLOW_DELAY <= elapsedMillis) {
-                        stateEmergency = 3;
-                        elapsedMillis = 0;
-                    }
-
-                    PORTB = (1 << RNS) & (1 << YEW);
-                    break;
-                case 3:
-                    if (STOPPED_DELAY <= elapsedMillis) {
-                        Emergency = FALSE;
-                        elapsedMillis = 0;
-                    }
-
-                    PORTB = (1 << RNS) & (1 << REW);
-                    break;
-                default:
-                    Emergency = FALSE;
-                    stateRegular = BREAKDOWN_ENTRY_STATE;
-                    break;
-            }
-        }
-        else {
-            // STATE MACHINE - REGULAR
-            switch(stateRegular) {
-                case 0:
-                    if (RED_DELAY <= elapsedMillis) {
-                        stateRegular = 1;
-                        elapsedMillis = 0; // Reset counter
-                    }
-
-                    PORTB = (1 << RNS) & (1 << REW);
-                    break;
-                case 1:
-                    if (GREEN_DELAY <= elapsedMillis) {
-                        stateRegular = 2;
-                        elapsedMillis = 0; // Reset counter
-                    }
-
-                    PORTB = (1 << GNS) & (1 << REW);
-                    break;
-                case 2:
-                    if (YELLOW_DELAY <= elapsedMillis) {
-                        stateRegular = 3;
-                        elapsedMillis = 0; // Reset counter
-                    }
-
-                    PORTB = (1 << YNS) & (1 << REW);
-                    break;
-                case 3:
-                    if (RED_DELAY <= elapsedMillis) {
-                        stateRegular = 4;
-                        elapsedMillis = 0; // Reset counter
-                    }
-
-                    PORTB = (1 << RNS) & (1 << REW);
-                    break;
-                case 4:
-                    if (GREEN_DELAY <= elapsedMillis) {
-                        stateRegular = 5;
-                        elapsedMillis = 0; // Reset counter
-                    }
-
-                    PORTB = (1 << RNS) & (1 << GEW);
-                    break;
-                case 5:
-                    if (YELLOW_DELAY <= elapsedMillis) {
-                        stateRegular = 0;
-                        elapsedMillis = 0; // Reset counter
-                    }
-
-                    PORTB = (1 << RNS) & (1 << YEW);
-                    break;
-                case 6: // BREAKDOWN STATE
-                    if (BREAKDOWN_DELAY <= elapsedMillis) {
-                        stateRegular = 7;
-                        elapsedMillis = 0; // Reset counter
-                    }
-
-                    PORTB = (1 << YNS);
-                    break;
-                case 7: // BREAKDOWN STATE
-                    if (BREAKDOWN_DELAY <= elapsedMillis) {
-                        stateRegular = 6;
-                        elapsedMillis = 0; // Reset counter
-                    }
-
-                    PORTB = (1 << YEW);
-                    break;
-                default:
-                    stateRegular = BREAKDOWN_ENTRY_STATE;
-                    break;
-            }
+                PORTB = (1 << RNS) & (1 << REW);
+                break;
+            default:
+                stateRegular = BREAKDOWN_ENTRY_STATE;
+                break;
         }
     }
 }
