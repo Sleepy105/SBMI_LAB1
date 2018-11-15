@@ -57,7 +57,7 @@ void tc1_init() {
 }
 
 void hardwareInit() {
-    /* Semaphores */
+    /* Stoplights*/
     DDRB |= (1 << RNS);                 // NS red
     DDRB |= (1 << YNS);                 // NS yellow
     DDRB |= (1 << GNS);                 // NS green
