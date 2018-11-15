@@ -29,13 +29,16 @@
 #define BREAKDOWN_ENTRY_STATE 6
 #define EMERGENCY_ENTRY_STATE 8
 
-uint8_t stateBeforeEm = 0;
+volatile uint8_t stateBeforeEm = 0;
+uint8_t Emergency = FALSE;
 
-uint8_t stateRegular = 0;
+volatile uint8_t stateRegular = 0;
 volatile int elapsedMillis = 0;         // Count elapsed milliseconds from last state change
 
 ISR(INT0_vect) {                        // Enter 'Emergency' mode on button press
-    stateBeforeEm = stateRegular;
+    if (!Emergency) {
+        stateBeforeEm = stateRegular;
+    }
     stateRegular = EMERGENCY_ENTRY_STATE;
 }
 
@@ -51,6 +54,10 @@ void tc1_init(){
     OCR1A = 625;                        // OCR1A
     TIMSK1 = (1<<OCIE1A);               // Enable interrupt on compare with OCR1A
     TCCR1B |= 4;                        // Set the TP to 256
+}
+
+void disableExternalInputs() {
+    EIMSK &= ~(1 << INT0);
 }
 
 int main() {
@@ -85,7 +92,7 @@ int main() {
                     elapsedMillis = 0;  // Reset counter
                 }
 
-                PORTB = (1 << RNS) & (1 << REW);
+                PORTB = (1 << RNS) | (1 << REW);
                 break;
             case 1:
                 if (GREEN_DELAY <= elapsedMillis) {
@@ -93,7 +100,7 @@ int main() {
                     elapsedMillis = 0;  // Reset counter
                 }
 
-                PORTB = (1 << GNS) & (1 << REW);
+                PORTB = (1 << GNS) | (1 << REW);
                 break;
             case 2:
                 if (YELLOW_DELAY <= elapsedMillis) {
@@ -101,7 +108,7 @@ int main() {
                     elapsedMillis = 0;  // Reset counter
                 }
 
-                PORTB = (1 << YNS) & (1 << REW);
+                PORTB = (1 << YNS) | (1 << REW);
                 break;
             case 3:
                 if (RED_DELAY <= elapsedMillis) {
@@ -109,7 +116,7 @@ int main() {
                     elapsedMillis = 0;  // Reset counter
                 }
 
-                PORTB = (1 << RNS) & (1 << REW);
+                PORTB = (1 << RNS) | (1 << REW);
                 break;
             case 4:
                 if (GREEN_DELAY <= elapsedMillis) {
@@ -117,7 +124,7 @@ int main() {
                     elapsedMillis = 0;  // Reset counter
                 }
 
-                PORTB = (1 << RNS) & (1 << GEW);
+                PORTB = (1 << RNS) | (1 << GEW);
                 break;
             case 5:
                 if (YELLOW_DELAY <= elapsedMillis) {
@@ -125,7 +132,7 @@ int main() {
                     elapsedMillis = 0;  // Reset counter
                 }
 
-                PORTB = (1 << RNS) & (1 << YEW);
+                PORTB = (1 << RNS) | (1 << YEW);
                 break;
             
             /* BREAKDOWN STATES */
@@ -135,6 +142,7 @@ int main() {
                     elapsedMillis = 0;  // Reset counter
                 }
 
+                disableExternalInputs();
                 PORTB = (1 << YNS);
                 break;
             case 7:
@@ -148,15 +156,16 @@ int main() {
             
             /* EMERGENCY STATES */
             case 8:
-                if (1 == stateBeforeEm || 2 == stateBeforeEm) {
+                if ((1 == stateBeforeEm || 2 == stateBeforeEm) && !Emergency) {
                     stateRegular = 9;
                 }
-                else if (4 == stateBeforeEm || 5 == stateBeforeEm) {
+                else if ((4 == stateBeforeEm || 5 == stateBeforeEm) && !Emergency) {
                     stateRegular = 10;
                 }
                 else {
                     stateRegular = 11;
                 }
+                Emergency = TRUE;
                 elapsedMillis = 0;
                 break;
             case 9:
@@ -165,7 +174,7 @@ int main() {
                     elapsedMillis = 0;
                 }
 
-                PORTB = (1 << YNS) & (1 << REW);
+                PORTB = (1 << YNS) | (1 << REW);
                 break;
             case 10:
                 if (YELLOW_DELAY <= elapsedMillis) {
@@ -173,7 +182,7 @@ int main() {
                     elapsedMillis = 0;
                 }
 
-                PORTB = (1 << RNS) & (1 << YEW);
+                PORTB = (1 << RNS) | (1 << YEW);
                 break;
             case 11:
                 if (STOPPED_DELAY <= elapsedMillis) {
@@ -183,10 +192,14 @@ int main() {
                     else if (4 == stateBeforeEm || 5 == stateBeforeEm) {
                         stateRegular = 0;
                     }
+                    else {
+                        stateRegular = stateBeforeEm;
+                    }
                     elapsedMillis = 0;
+                    Emergency = FALSE;
                 }
 
-                PORTB = (1 << RNS) & (1 << REW);
+                PORTB = (1 << RNS) | (1 << REW);
                 break;
             default:
                 stateRegular = BREAKDOWN_ENTRY_STATE;
