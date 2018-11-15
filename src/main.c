@@ -46,7 +46,7 @@ ISR(TIMER1_COMPA_vect) {
     elapsedMillis += 10;
 }
 
-void tc1_init(){
+void tc1_init() {
     TCCR1B = 0;                         // STOP the timer
     TIFR1 = (7<<TOV1) | (1<<ICF1);      // Clear flag register
     TCCR1A = 0;                         // Set mode...
@@ -56,12 +56,7 @@ void tc1_init(){
     TCCR1B |= 4;                        // Set the TP to 256
 }
 
-void disableExternalInputs() {
-    EIMSK &= ~(1 << INT0);
-}
-
-int main() {
-
+void hardwareInit() {
     /* Semaphores */
     DDRB |= (1 << RNS);                 // NS red
     DDRB |= (1 << YNS);                 // NS yellow
@@ -81,7 +76,15 @@ int main() {
     tc1_init();
 
     sei();
-    
+}
+
+void disableExternalInputs() {
+    EIMSK &= ~(1 << INT0);
+}
+
+int main() {
+
+    hardwareInit();    
     
     while (1) {
         
