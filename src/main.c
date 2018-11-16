@@ -1,8 +1,26 @@
 /*
- * main.c
+ *  main.c
  *
  *  Created on: Oct 10, 2018
- *      Author: Luís Sousa, Leonor Santos
+ *      Author: Luís Sousa (lm.sousa@fe.up.pt), Leonor Santos (up201504515@fe.up.pt)
+ * 
+ *  This code is designed to control a simple semaphore.
+ *  It implements 6 different lights. 3 for each traffic direction.
+ *  Using external interrupts, it allows for an emergency stop of
+ *  all traffic flow.
+ *  In addition, this code is designed to set the system in a
+ *  self-protection state in case of memory degradation/error.
+ *  In this state the system is considered to be compromised and
+ *  will ignore all external inputs and wait for a system-wide reset.
+ *  
+ *  By using timer-triggered interruptions to count the time there
+ *  are no points where the system 'hangs'.
+ * 
+ *  Technical Information:
+ *      Timer used for time-keeping: Timer1
+ *      System CP: 1 (Arduino Default)
+ *      Timer1 TP: 256
+ *      External Interrupts used: INT0
  */
 
 #include <avr/io.h>
@@ -37,7 +55,7 @@ volatile int remainingMillis = 0;       // Count elapsed milliseconds from last 
 
 ISR(INT0_vect) {                        // Enter 'Emergency' mode on button press
     if (!Emergency) {
-        stateBeforeEm = stateRegular;
+        stateBeforeEm = stateRegular;   // Save the system state before entering emergency mode
     }
     stateRegular = EMERGENCY_ENTRY_STATE;
 }
@@ -59,7 +77,7 @@ void tc1_init() {                       // Initialize Timer1 to trigger a interr
 }
 
 void hardware_Init() {
-    /* Stoplights */
+    /* Stoplight LEDs as outputs */
     DDRB |= (1 << RNS);                 // NS red
     DDRB |= (1 << YNS);                 // NS yellow
     DDRB |= (1 << GNS);                 // NS green
@@ -73,32 +91,32 @@ void hardware_Init() {
 
     /* EMG button interrupt setup */
     EICRA |= (0x02);                    // INT0 Interrupt at FE
-    EIMSK |= (1 << INT0);
+    EIMSK |= (1 << INT0);               // Enable the INT0 external interrupt call
 
     /* Activate Interrupts */
     sei();
 }
 
 void disableExternalInputs() {
-    EIMSK &= ~(1 << INT0);
+    EIMSK &= ~(1 << INT0);              // Disable the INT0 external interrupt call
 }
 
 int main() {
 
+    /* Hardware Initialization */
     hardware_Init();    
-    /* INIT Timers */
     tc1_init();
+
 
     remainingMillis = RED_DELAY;
   
-    
     while (1) {
         
         switch(stateRegular) {
             case 0:
                 if (0 == remainingMillis) {
                     stateRegular = 1;
-                    remainingMillis = GREEN_DELAY;  // Reset counter
+                    remainingMillis = GREEN_DELAY;      // Reset counter
                 }
 
                 PORTB = (1 << RNS) | (1 << REW);
@@ -106,7 +124,7 @@ int main() {
             case 1:
                 if (0 == remainingMillis) {
                     stateRegular = 2;
-                    remainingMillis = YELLOW_DELAY;  // Reset counter
+                    remainingMillis = YELLOW_DELAY;     // Reset counter
                 }
 
                 PORTB = (1 << GNS) | (1 << REW);
@@ -114,7 +132,7 @@ int main() {
             case 2:
                 if (0 == remainingMillis) {
                     stateRegular = 3;
-                    remainingMillis = RED_DELAY;  // Reset counter
+                    remainingMillis = RED_DELAY;        // Reset counter
                 }
 
                 PORTB = (1 << YNS) | (1 << REW);
@@ -122,7 +140,7 @@ int main() {
             case 3:
                 if (0 == remainingMillis) {
                     stateRegular = 4;
-                    remainingMillis = GREEN_DELAY;  // Reset counter
+                    remainingMillis = GREEN_DELAY;      // Reset counter
                 }
 
                 PORTB = (1 << RNS) | (1 << REW);
@@ -130,7 +148,7 @@ int main() {
             case 4:
                 if (0 == remainingMillis) {
                     stateRegular = 5;
-                    remainingMillis = YELLOW_DELAY;  // Reset counter
+                    remainingMillis = YELLOW_DELAY;     // Reset counter
                 }
 
                 PORTB = (1 << RNS) | (1 << GEW);
@@ -138,7 +156,7 @@ int main() {
             case 5:
                 if (0 == remainingMillis) {
                     stateRegular = 0;
-                    remainingMillis = RED_DELAY;  // Reset counter
+                    remainingMillis = RED_DELAY;        // Reset counter
                 }
 
                 PORTB = (1 << RNS) | (1 << YEW);
@@ -170,6 +188,12 @@ int main() {
             case 8:
                 if (!Emergency) {
                     switch(stateBeforeEm) {
+                        /*
+                         * Only reset the timer if the state is one where a Green light was on.
+                         * Otherwise just keep the Yellow light on for the remaining time it is
+                         * supposed to.
+                         */
+                        
                         case 1:
                             remainingMillis = YELLOW_DELAY;
                         case 2:
@@ -221,18 +245,17 @@ int main() {
                     }
                     else {
                         stateRegular = stateBeforeEm;
-                        remainingMillis = RED_DELAY;
                     }
                     Emergency = FALSE;
                 }
 
                 PORTB = (1 << RNS) | (1 << REW);
                 break;
-            default:
+            default:                                    // In case of system degradation:
                 stateRegular = BREAKDOWN_ENTRY_STATE;
                 remainingMillis = BREAKDOWN_DELAY;
-                disableExternalInputs();
-                Emergency = FALSE;
+                disableExternalInputs();                // System is considered compromised. All external inputs disabled. Wait for system-wide reset
+                Emergency = FALSE;                      // 'Breakdown' state is not a 'Emergency' state
                 break;
         }
     }
