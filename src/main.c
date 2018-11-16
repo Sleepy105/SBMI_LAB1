@@ -50,7 +50,7 @@
 volatile uint8_t stateBeforeEm = 0;
 uint8_t Emergency = FALSE;
 
-volatile uint8_t stateRegular = 0;
+volatile uint8_t stateRegular = 0;      // Saves the current state of the system
 volatile int remainingMillis = 0;       // Count elapsed milliseconds from last state change
 
 ISR(INT0_vect) {                        // Enter 'Emergency' mode on button press
